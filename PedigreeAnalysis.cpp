@@ -16,7 +16,6 @@ using namespace std;
 // People
 const int maxNumOfPeople = 2e5;
 int numOfPeople;
-int numOfSubTrees;
 vector<int> gender; // 1 if Female.
 vector<bool> AffectionFile;
 
@@ -544,17 +543,17 @@ double ADModelProb(int mother)
     Possibility[4] = Gene_Prob[mother][0][1] * Gene_Prob[father][0][1];
     Possibility[4] *= ChildrenAffectionProb(mother, 0.75);
 
-    // DR , RR -> 1/4 Of Chidren Affected.
+    // DR , RR -> 1/2 Of Chidren Affected.
     Possibility[5] = Gene_Prob[mother][0][1] * Gene_Prob[father][0][2];
-    Possibility[5] *= ChildrenAffectionProb(mother, 0.25);
+    Possibility[5] *= ChildrenAffectionProb(mother, 0.5);
 
     // RR , DD -> All Chidren Affected.
     Possibility[6] = Gene_Prob[mother][0][2] * Gene_Prob[father][0][0];
     Possibility[6] *= ChildrenAffectionProb(mother, 1);
 
-    // RR , DR -> 1/4 Of Chidren Affected.
+    // RR , DR -> 1/2 Of Chidren Affected.
     Possibility[7] = Gene_Prob[mother][0][2] * Gene_Prob[father][0][1];
-    Possibility[7] *= ChildrenAffectionProb(mother, 0.25);
+    Possibility[7] *= ChildrenAffectionProb(mother, 0.5);
 
     // RR , RR -> None Of Chidren Affected.
     Possibility[8] = Gene_Prob[mother][0][2] * Gene_Prob[father][0][2];
@@ -591,17 +590,17 @@ double ARModelProb(int mother)
     Possibility[4] = Gene_Prob[mother][1][1] * Gene_Prob[father][1][1];
     Possibility[4] *= ChildrenAffectionProb(mother, 0.25);
 
-    // DR , RR -> 3/4 Of Chidren Affected.
+    // DR , RR -> 1/2 Of Chidren Affected.
     Possibility[5] = Gene_Prob[mother][1][1] * Gene_Prob[father][1][2];
-    Possibility[5] *= ChildrenAffectionProb(mother, 0.75);
+    Possibility[5] *= ChildrenAffectionProb(mother, 0.5);
 
     // RR , DD -> None of Chidren Affected.
     Possibility[6] = Gene_Prob[mother][1][2] * Gene_Prob[father][1][0];
     Possibility[6] *= ChildrenAffectionProb(mother, 0);
 
-    // RR , DR -> 3/4 Of Chidren Affected.
+    // RR , DR -> 1/2 Of Chidren Affected.
     Possibility[7] = Gene_Prob[mother][1][2] * Gene_Prob[father][1][1];
-    Possibility[7] *= ChildrenAffectionProb(mother, 0.75);
+    Possibility[7] *= ChildrenAffectionProb(mother, 0.5);
 
     // RR , RR -> All Chidren Affected.
     Possibility[8] = Gene_Prob[mother][1][2] * Gene_Prob[father][1][2];
