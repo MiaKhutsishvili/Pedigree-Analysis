@@ -4,6 +4,7 @@
 */
 
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <queue>
 #include <cmath>
@@ -16,7 +17,7 @@ using namespace std;
 const int maxNumOfPeople = 2e5;
 int numOfPeople;
 int numOfSubTrees;
-vector<int> gender; // 0 if Female.
+vector<int> gender; // 1 if Female.
 vector<bool> AffectionFile;
 
 // Pedigree
@@ -56,6 +57,62 @@ double XLDModeProbe(int);
 double XLRModeProbe(int);
 double YLModeProbe(int);
 
+
+void exportToDOT(const string &filename)
+{
+    ofstream out(filename);
+    out << "digraph Pedigree {\n";
+    out << "  rankdir=TB;\n"; // Tree layout: top to bottom
+    out << "  node [fontname=\"Arial\", fontsize=12, style=filled, fillcolor=white];\n";
+    out << "  edge [color=gray50];\n\n";
+
+    // Draw individuals
+    for (int i = 0; i < numOfPeople; i++)
+    {
+        string nodeName = "Person_" + to_string(i + 1);
+        string shape = gender[i] ? "circle" : "box"; // Female: circle, Male: box
+        string color = AffectionFile[i] ? "red" : "black";
+        string genderSymbol = gender[i] ? "♀" : "♂";
+
+        out << "  " << nodeName << " [label=\"" << genderSymbol << " " << i + 1
+            << "\", shape=" << shape << ", color=" << color << "];\n";
+    }
+
+    out << "\n";
+
+    // Draw couples and children
+    for (int i = 0; i < numOfPeople; i++)
+    {
+        int partner = Partner[i];
+        if (partner != -1 && i < partner)
+        {
+            string coupleNode = "Couple_" + to_string(i + 1) + "_" + to_string(partner + 1);
+
+            // Align couple horizontally
+            out << "  { rank=same; Person_" << i + 1 << "; Person_" << partner + 1 << "; }\n";
+
+            // Invisible anchor node
+            out << "  " << coupleNode << " [shape=point, width=0, label=\"\"];\n";
+
+            // Horizontal line between partners
+            out << "  Person_" << i + 1 << " -> " << coupleNode << " [dir=none, constraint=false, color=gray70];\n";
+            out << "  Person_" << partner + 1 << " -> " << coupleNode << " [dir=none, constraint=false, color=gray70];\n";
+
+            // Children descend from couple node
+            for (int child : Children[i])
+            {
+                if (Parents[child].first == i || Parents[child].second == i)
+                    out << "  " << coupleNode << " -> Person_" << child + 1 << " [color=gray30];\n";
+            }
+
+            out << "\n";
+        }
+    }
+
+    out << "}\n";
+    out.close();
+}
+
 int main()
 {
     for (int i = 0; i < 5; i++)
@@ -68,17 +125,17 @@ int main()
     for (int i = 0; i < numOfPeople; i++)
     {
         bool gndr;
-        cout << "Enter the gender of " << i + 1 << "th person:" << endl;
-        cout << "0 if Female / 1 if Male -> ";
+        cout << "Enter the gender of person #" << i + 1 << ":" << endl;
+        cout << "1 if Female / 0 if Male -> ";
         cin >> gndr;
         gender.push_back(gndr);
 
         pair<int, int> prnts;
-        cout << "Enter parents of " << i + 1 << "th person:" << endl;
+        cout << "Enter parents of #" << i + 1 << ":" << endl;
         cout << "No parents? Just enter 0 as their parents." << endl;
-        cout << i + 1 << "'s mother -> ";
+        cout << "#" << i + 1 << "'s mother -> ";
         cin >> prnts.first;
-        cout << i + 1 << "'s father -> ";
+        cout << "#" << i + 1 << "'s father -> ";
         cin >> prnts.second;
         prnts.first--;
         prnts.second--;
@@ -91,35 +148,48 @@ int main()
         else
             Headers.push(i);
 
-        cout << "Enter the partner of " << i + 1 << "th person:" << endl;
-        cout << "No partner? Just enter 0." << endl;
+        cout << "Enter the partner of #" << i + 1 << ":" << endl;
+        cout << "No partner? Enter 0." << endl;
         cout << "-> ";
         cin >> Partner[i];
         Partner[i]--;
 
-        bool Effected;
-        cout << "Is " << i + 1 << "th person effected? " << endl;
-        cout << "1 if yes / 0 if no -> ";
-        cin >> Effected;
-        AffectionFile.push_back(Effected);
+        bool Affected;
+        cout << "Is #" << i + 1 << " affected? " << endl;
+        cout << "1 if yes / 0 if not -> ";
+        cin >> Affected;
+        AffectionFile.push_back(Affected);
     }
+
+    exportToDOT("pedigree.dot");
 
     // Gene Probability Calculation
     while (Headers.size())
         bfs(Headers.front());
 
     // Best Model
-    mostLikableModel[0].second = "Autosome Dominant Inheritage";
-    mostLikableModel[1].second = "Autosome Recessive Inheritage";
-    mostLikableModel[2].second = "X_Linked Dominant Inheritage";
-    mostLikableModel[3].second = "X_Linked Recessive Inheritage";
-    mostLikableModel[4].second = "Y_Linked Inheritage";
+    /* Normilizing:
+    double total = 0;
+    for (int i = 0; i < 5; i++)
+        total += Model_Prob[i]; // Assuming uniform priors
+
+    if (total > 0)
+    {
+        for (int i = 0; i < 5; i++)
+            Model_Prob[i] = Model_Prob[i] / total;
+    }
+    */
+    mostLikableModel[0].second = "Autosome Dominant Inheritance";
+    mostLikableModel[1].second = "Autosome Recessive Inheritance";
+    mostLikableModel[2].second = "X_Linked Dominant Inheritance";
+    mostLikableModel[3].second = "X_Linked Recessive Inheritance";
+    mostLikableModel[4].second = "Y_Linked Inheritance";
     for (int i = 0; i < 5; i++)
         mostLikableModel[i].first = Model_Prob[i];
     sort(mostLikableModel, mostLikableModel + 5);
     reverse(mostLikableModel, mostLikableModel + 5);
     cout << "Best Model is : " << mostLikableModel[0].second << endl;
-    cout << "The Probabilitly for each model goes as follows:" << endl;
+    cout << "The lilkelihood of each model is:" << endl;
     for (int i = 0; i < 5; i++)
     {
         cout << i + 1 << ") ";
@@ -173,6 +243,23 @@ void bfs(int node)
 
 void PedStarters(int node)
 {
+    if (!Children[node].size())
+    {
+        Model_Prob[0] *= ((AffectionFile[node] * 2.0 / 3.0) + (!AffectionFile[node] * 1.0 / 3.0));
+        Model_Prob[1] *= ((AffectionFile[node] * 1.0 / 3.0) + (!AffectionFile[node] * 2.0 / 3.0));
+        if (gender[node])
+        {
+            Model_Prob[2] *= ((AffectionFile[node] * 2.0 / 3.0) + (!AffectionFile[node] * 1.0 / 3.0));
+            Model_Prob[3] *= ((AffectionFile[node] * 1.0 / 3.0) + (!AffectionFile[node] * 2.0 / 3.0));
+            Model_Prob[4] *= ((AffectionFile[node] * 0) + (!AffectionFile[node] * 1));
+        }
+        else
+        {
+            Model_Prob[2] *= ((AffectionFile[node] * 1.0 / 2.0) + (!AffectionFile[node] * 1.0 / 2.0));
+            Model_Prob[3] *= ((AffectionFile[node] * 1.0 / 2.0) + (!AffectionFile[node] * 1.0 / 2.0));
+            Model_Prob[4] *= ((AffectionFile[node] * 1.0 / 2.0) + (!AffectionFile[node] * 1.0 / 2.0));
+        }
+    }
     if (AffectionFile[node])
     {
         // Mode 0 -> DD or DR
@@ -234,7 +321,7 @@ void PedStarters(int node)
         }
         else
             // XdY
-            Gene_Prob[node][3][4] = 1;
+            Gene_Prob[node][3][3] = 1;
 
         // Mode 4
         if (!gender[node])
@@ -252,7 +339,7 @@ void autoDomProb(int node)
     int mom = Parents[node].first;
     int dad = Parents[node].second;
 
-    // DD Affected.
+    // DD / Affected.
     Gene_Prob[node][0][0] = (Gene_Prob[mom][0][0] + 0.5 * Gene_Prob[mom][0][1]) *
                             (Gene_Prob[dad][0][0] + 0.5 * Gene_Prob[dad][0][1]);
 
@@ -260,7 +347,7 @@ void autoDomProb(int node)
     Gene_Prob[node][0][2] = (Gene_Prob[mom][0][2] + 0.5 * Gene_Prob[mom][0][1]) *
                             (Gene_Prob[dad][0][2] + 0.5 * Gene_Prob[dad][0][1]);
 
-    // DR Affected.
+    // DR / Affected.
     Gene_Prob[node][0][1] = 1 - (Gene_Prob[node][0][0] + Gene_Prob[node][0][2]);
 
     // Considering the facts...
@@ -435,7 +522,7 @@ double ADModelProb(int mother)
 {
     int father = Partner[mother];
     double Possibility[9];
-    double answer = 1.0;
+    double answer = 0;
 
     // DD , DD -> All Children Affected.
     Possibility[0] = Gene_Prob[mother][0][0] * Gene_Prob[father][0][0];
@@ -474,7 +561,7 @@ double ADModelProb(int mother)
     Possibility[8] *= ChildrenAffectionProb(mother, 0);
 
     for (int i = 0; i < 9; i++)
-        answer *= Possibility[i];
+        answer += Possibility[i];
     return answer;
 }
 
@@ -482,7 +569,7 @@ double ARModelProb(int mother)
 {
     int father = Partner[mother];
     double Possibility[9];
-    double answer = 1.0;
+    double answer = 0;
 
     // DD , DD -> None of Children Affected.
     Possibility[0] = Gene_Prob[mother][1][0] * Gene_Prob[father][1][0];
@@ -521,7 +608,7 @@ double ARModelProb(int mother)
     Possibility[8] *= ChildrenAffectionProb(mother, 1);
 
     for (int i = 0; i < 9; i++)
-        answer *= Possibility[i];
+        answer += Possibility[i];
     return answer;
 }
 
@@ -529,7 +616,7 @@ double XLDModeProbe(int mother)
 {
     int father = Partner[mother];
     double Possibility[6];
-    double answer = 1.0;
+    double answer = 0;
 
     // XdXd , XdY -> ALl Children Affected.
     Possibility[0] = Gene_Prob[mother][2][3] * Gene_Prob[father][2][3];
@@ -563,7 +650,7 @@ double XLDModeProbe(int mother)
     Possibility[5] *= SonsAffectionProb(mother, 0);
 
     for (int i = 0; i < 6; i++)
-        answer *= Possibility[i];
+        answer += Possibility[i];
     return answer;
 }
 
@@ -571,7 +658,7 @@ double XLRModeProbe(int mother)
 {
     int father = Partner[mother];
     double Possibility[6];
-    double answer = 1.0;
+    double answer = 0;
 
     // XdXd , XdY -> None of Children Affected.
     Possibility[0] = Gene_Prob[mother][3][3] * Gene_Prob[father][3][3];
@@ -599,14 +686,12 @@ double XLRModeProbe(int mother)
     Possibility[4] *= DaughtersAffectionProb(mother, 0);
     Possibility[4] *= SonsAffectionProb(mother, 1);
 
-    // XrXr , XrY -> All Daughters Affected,
-    //               All Sons Affected.
+    // XrXr , XrY -> All Children Affected.
     Possibility[5] = Gene_Prob[mother][3][5] * Gene_Prob[father][3][4];
-    Possibility[5] *= DaughtersAffectionProb(mother, 1);
-    Possibility[5] *= SonsAffectionProb(mother, 1);
+    Possibility[5] *= ChildrenAffectionProb(mother, 1);
 
     for (int i = 0; i < 6; i++)
-        answer *= Possibility[i];
+        answer += Possibility[i];
     return answer;
 }
 
@@ -616,8 +701,9 @@ double YLModeProbe(int mother)
     double Possibility[2];
 
     // No Woman Has it.
-    double answer = !AffectionFile[mother];
-    answer *= DaughtersAffectionProb(mother, 0);
+    if (AffectionFile[mother])
+        return 0;
+    double answer = 0;
 
     // XY* -> All Sons Affected.
     Possibility[0] = Gene_Prob[father][4][5];
@@ -628,6 +714,9 @@ double YLModeProbe(int mother)
     Possibility[1] *= SonsAffectionProb(mother, 0);
 
     for (int i = 0; i < 2; i++)
-        answer *= Possibility[i];
+        answer += Possibility[i];
+
+    answer *= DaughtersAffectionProb(mother, 0);
+
     return answer;
 }
